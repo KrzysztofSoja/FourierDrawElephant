@@ -18,3 +18,5 @@ History of leatning:
 Accuracy plot:
 
 ![alt_text](https://github.com/KrzysztofSoja/FourierDrawElephant/blob/master/acc_plot.png)
+
+You can use it at will and have fun :)
