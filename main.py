@@ -10,7 +10,6 @@ import torch.utils.data
 import os
 
 from tqdm import tqdm
-from skimage.morphology import skeletonize
 from typing import Tuple, List, Dict
 
 
@@ -20,13 +19,14 @@ def make_train_set(path: str) -> np.ndarray:
     _, image = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY)
     image = 255 - image
     image //= 255
-    image = skeletonize(image)
-    image = image.astype(np.uint8)
-
     contours, _ = cv2.findContours(image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     contours = np.squeeze(contours[0], axis=1)
-    contours = contours - np.mean(contours)  # Normalize data.
-    contours = contours / np.std(contours)
+
+    contours = contours.astype(dtype=np.float)
+    contours[:, 0] = contours[:, 0] - np.mean(contours[:, 0])
+    contours[:, 1] = contours[:, 1] - np.mean(contours[:, 1])
+    contours[:, 0] = contours[:, 0] / np.std(contours[:, 0])
+    contours[:, 1] = contours[:, 1] / np.std(contours[:, 1])
     return contours
 
 
@@ -59,8 +59,8 @@ class FourierDrawer:
 
         sin = torch.sin(torch.mul(input, k))
         cos = torch.cos(torch.mul(input, k))
-        sin = sin.repeat((1, 2)).view((-1, 2))
-        cos = cos.repeat((1, 2)).view((-1, 2))
+        sin = sin[:, None].repeat((1, 2))
+        cos = cos[:, None].repeat((1, 2))
 
         psin = torch.mul(self.a, sin)
         pcos = torch.mul(self.b, cos)
@@ -79,15 +79,17 @@ class FourierDrawer:
         acc_history = []
 
         for step in tqdm(range(steps), desc="Fitting equitation: "):
+
             acc = []
             for idx, _t in enumerate(t):
+                optimizer.zero_grad()
                 output = self._fourier_equitation(torch.Tensor([_t]))
                 output = loss(input=output, target=torch.Tensor(self.data[idx]))
-                acc.append(output.item())
+                acc = output.item()
                 output.backward()
                 optimizer.step()
-            self._save_parameters(str(step) + '.txt')
 
+            self._save_parameters(str(step) + '.txt')
             acc_history.append(np.mean(acc))
 
             if make_gif:
@@ -109,11 +111,15 @@ class FourierDrawer:
     def _make_history_plot(self, history: List[float]):
         """Create and save plot of history learning."""
         plt.plot(history)
+        plt.title('Learning history')
+        plt.xlabel('Steps')
+        plt.ylabel('Accuracy')
         path = self.experiment_name + '/acc_plot.png'
         plt.savefig(path)
         plt.close()
 
     def _make_image(self, x: List[float], y: List[float], image_name: str):
+        plt.gca().invert_yaxis()
         plt.scatter(x, y)
         path = self.experiment_name + '/images/' + image_name + '.png'
         plt.savefig(path)
@@ -155,6 +161,6 @@ class FourierDrawer:
 
 
 if __name__ == "__main__":
-    data = make_train_set('simple_dick.png')
-    drawer = FourierDrawer(data, 4)
-    drawer.train(lr=0.00005, steps=1000, make_gif=True)
+    data = make_train_set('elephant.png')
+    drawer = FourierDrawer(data, 8)
+    drawer.train(lr=0.00005, steps=200, make_gif=True)
