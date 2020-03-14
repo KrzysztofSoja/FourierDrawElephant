@@ -3,7 +3,7 @@ Simple program to find fourier series parameters to imitate image. Algorithm bas
 
 Basic on: https://fermatslibrary.com/s/drawing-an-elephant-with-four-complex-parameters
 
-Sorce image form paper:
+Sorce image from paper:
 
 ![alt text](https://github.com/KrzysztofSoja/FourierDrawElephant/blob/master/elephant.png)
 
